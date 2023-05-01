@@ -1,0 +1,231 @@
+#version 460 core
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+// Data transfered from parent application
+layout(rgba32f, binding = 0) uniform image2D imgOutput;
+
+struct Material {
+	vec4 data;
+	vec4 diffuseColor;
+	vec4 specularColor;
+	vec4 emissionColor;
+};
+
+struct Sphere {
+	vec4 posRad;
+	Material material;
+};
+
+struct Plane {
+	vec4 c00;
+	vec4 c10;
+	vec4 c01;
+	vec4 c11;
+	Material material;
+};
+
+layout(std430, binding = 1) buffer SphereBuffer {
+	Sphere spheres[];
+};
+
+layout(std430, binding = 2) buffer PlaneBuffer {
+	Plane planes[];
+};
+
+uniform int numSpheres;
+uniform int numPlanes;
+
+uniform mat4 camInvProjView;
+uniform vec3 cameraPos;
+uniform vec3 cameraDir;
+
+uniform vec3 ray00;
+uniform vec3 ray10;
+uniform vec3 ray01;
+uniform vec3 ray11;
+
+
+// Local structs
+struct Ray {
+	vec3 pos;
+	vec3 dir;
+};
+
+struct Hit {
+	float t;
+	vec3 normal;
+	Material material;
+};
+
+// Function to test float equality
+bool isEqual(float x, float y) {
+	return (abs(x - y) < 0.0000001);
+}
+
+bool intersectSphere(Sphere sphere, Ray ray, inout Hit hit) {
+	vec3 pos = sphere.posRad.xyz;
+	float rad = sphere.posRad.w;
+
+	float a = dot(ray.dir, ray.dir);
+	vec3 sToR = ray.pos - pos;
+	float b = 2.0 * dot(sToR, ray.dir);
+	float c = dot(sToR, sToR) - rad * rad;
+	float disc = b * b - 4.0 * a * c;
+	if (disc <= 0) return false;
+	float t = (-b - sqrt(disc)) / (2.0 * a);
+	// If this t <= 0 then we are inside the sphere OR facing backwards
+	if (t <= 0) {
+		t = (-b + sqrt(disc)) / (2.0 * a);
+		// If this t <= 0 then we are backwards
+		if (t <= 0) return false;
+		// If not then return the negative normal for the inside face of the sphere
+		if (t < hit.t) {
+			hit.t = t;
+			hit.normal = -normalize((ray.pos + t * ray.dir) - pos);
+			hit.material = sphere.material;
+			return true;
+		}
+	}
+	if (t < hit.t) {
+		hit.t = t;
+		hit.normal = normalize((ray.pos + t * ray.dir) - pos);
+		hit.material = sphere.material;
+		return true;
+	}
+	return true;
+}
+
+// Subroutine for plane intersection
+bool intersectTriangle(vec3 p0, vec3 p1, vec3 p2, Ray ray, inout Hit hit) {
+	vec3 edge1 = p1 - p0;
+	vec3 edge2 = p2 - p0;
+	vec3 h = cross(ray.dir, edge2);
+	float a = dot(edge1, h);
+	if (isEqual(a, 0)) return false; // Check if ray is parallel
+	float f = 1.0 / a;
+	vec3 s = ray.pos - p0;
+	float u = f * dot(s, h);
+	if (u < 0 || u > 1.0) return false;
+	vec3 q = cross(s, edge1);
+	float v = f * dot(ray.dir, q);
+	if (v < 0.0 || u + v > 1.0) return false;
+	float t = f * dot(edge2, q);
+	if (t > 0 && t < hit.t) {
+		hit.t = t;
+		hit.normal = normalize(cross(edge2, edge1));
+		if (dot(ray.dir, hit.normal) > 0) hit.normal *= -1;
+		return true;
+	}
+	return false;
+}
+
+bool intersectPlane(Plane plane, Ray ray, inout Hit hit) {
+	bool intersect = intersectTriangle(plane.c00.xyz, plane.c10.xyz, plane.c11.xyz, ray, hit);
+	if (intersect) {
+		hit.material = plane.material;
+		return true;
+	}
+	intersect = intersectTriangle(plane.c00.xyz, plane.c11.xyz, plane.c01.xyz, ray, hit);
+	if (intersect) {
+		hit.material = plane.material;
+		return true;
+	}
+	return false;
+}
+
+bool castRay(Ray ray, inout Hit hit) {
+	bool intersect = false;
+
+	// First spheres
+	for (int i = 0; i < numSpheres; i++) {
+		if (intersectSphere(spheres[i], ray, hit)) intersect = true;
+	}
+
+	// Planes
+	for (int i = 0; i < numPlanes; i++) {
+		if (intersectPlane(planes[i], ray, hit)) intersect = true;
+	}
+
+	return intersect;
+}
+
+// Traces a singular ray and returns the hit color
+vec4 traceRay(Ray ray) {
+	
+	vec3 lightPos = vec3(-10, 20, 15);
+	vec4 lightColor = vec4(1, 1, 1, 1);
+	float lightPower = 800.0;
+
+	vec4 color = vec4(0);
+	vec4 ambientColor = vec4(0.03, 0.9, 0.98, 1.0);
+
+	Hit hit;
+	hit.t = 1.0 / 0.0;
+	bool intersect = castRay(ray, hit);
+
+	// Blinn Phong Shading
+	if (intersect) {
+		vec3 hitPoint = ray.pos + hit.t * ray.dir;
+		vec3 e = -ray.dir;
+		vec3 l = lightPos - hitPoint;
+		float distance = length(l);
+		l = normalize(l);
+			
+		float lambertian = max(dot(hit.normal, l), 0.0);
+			
+		// Blinn Phong reflectance
+		vec3 halfDir = normalize(l + e);
+		float specAngle = max(dot(halfDir, hit.normal), 0.0);
+		float specularity = pow(specAngle, hit.material.data.z);
+			
+		color = 0.1 * ambientColor + (hit.material.diffuseColor * lambertian + hit.material.specularColor * specularity) * 
+						lightColor * lightPower / (distance * distance);
+		return color;
+	}
+
+	return ambientColor;
+}
+
+// Creates the start ray through the current pixel
+Ray getStartRay(ivec2 txlCoords, ivec2 imDim) {
+	Ray ray;
+	ray.pos = cameraPos;
+	
+	vec2 tpos = vec2(txlCoords) / vec2(imDim.x, imDim.y);
+	vec3 rayDir = mix(mix(ray00, ray01, tpos.y), mix(ray10, ray11, tpos.y), tpos.x);
+	ray.dir = normalize(rayDir - cameraPos);
+
+	return ray;
+}
+
+void main() {	
+	ivec2 imDim = imageSize(imgOutput);
+	int numGroupsX = int(ceil((float(imDim.x)/(gl_NumWorkGroups.x))));
+	int numGroupsY = int(ceil((float(imDim.y)/(gl_NumWorkGroups.y))));
+	
+	ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	ivec2 curCoord;
+	
+	Ray ray;
+	// If the workgroup block is not the same size as the image dimension
+	//	tile the current working core as many times as necessary to fill the image
+	for (int yi = 0; yi < numGroupsY; yi++) {
+		for (int xi = 0; xi < numGroupsX; xi++) {
+			curCoord = ivec2(xi, yi) * int(gl_NumWorkGroups.xy) + texelCoord;
+			if (curCoord.x < imDim.x && curCoord.y < imDim.y) {
+				// TODO
+				// Method to add anitaliasing/blurring/multisampling
+				// run this multiple times with jittered starting rays
+				// accumulate the color and finally divide by the number of accumulated passes
+				ray = getStartRay(curCoord, imDim);
+				imageStore(imgOutput, curCoord, traceRay(ray));
+			}
+		}
+	}
+
+	//ivec2 imDim = imageSize(imgOutput);
+	//ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+	//Ray ray = getStartRay(texelCoord, imDim);
+	//imageStore(imgOutput, texelCoord, traceRay(ray));
+}
