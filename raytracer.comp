@@ -31,6 +31,7 @@ struct Material {
 	vec4 data;
 	vec3 diffuseColor;
 	vec3 specularColor;
+	vec3 refractionColor;
 	vec3 emissionColor;
 };
 
@@ -81,6 +82,7 @@ struct Hit {
 	float t;
 	vec3 normal;
 	Material material;
+	bool backface;
 };
 
 // Function to test float equality
@@ -99,34 +101,41 @@ bool intersectSphere(Sphere sphere, Ray ray, inout Hit hit) {
 	float disc = b * b - 4.0 * a * c;
 	if (disc <= 0) return false;
 	float t = (-b - sqrt(disc)) / (2.0 * a);
-	if (t <= 0) return false;
-	if (t < hit.t) {
-		hit.t = t;
-		hit.normal = normalize((ray.pos + t * ray.dir) - pos);
-		hit.material = sphere.material;
-		return true;
-	}
 
 
-	// If this t <= 0 then we are inside the sphere OR facing backwards
-	//if (t <= 0) {
-	//	t = (-b + sqrt(disc)) / (2.0 * a);
-	//	// If this t <= 0 then we are backwards
-	//	if (t <= 0) return false;
-	//	// If not then return the negative normal for the inside face of the sphere
-	//	if (t < hit.t) {
-	//		hit.t = t;
-	//		hit.normal = -normalize((ray.pos + t * ray.dir) - pos);
-	//		hit.material = sphere.material;
-	//		return true;
-	//	}
-	//}
+	// Hit computation without flipped normal inside the sphere
+	//if (t <= 0) return false;
 	//if (t < hit.t) {
 	//	hit.t = t;
 	//	hit.normal = normalize((ray.pos + t * ray.dir) - pos);
 	//	hit.material = sphere.material;
 	//	return true;
 	//}
+
+
+	// Hit computation for refraction
+	// Normal gets flipped if hit is inside the sphere
+	if (t <= 0) {
+		t = (-b + sqrt(disc)) / (2.0 * a);
+		// If this t <= 0 then we are backwards
+		if (t <= 0) return false;
+		// If not then return the negative normal for the inside face of the sphere
+		if (t < hit.t) {
+			hit.t = t;
+			hit.normal = -normalize((ray.pos + t * ray.dir) - pos);
+			hit.material = sphere.material;
+			hit.backface = true;
+			return true;
+		}
+	}
+	if (t < hit.t) {
+		hit.t = t;
+		hit.normal = normalize((ray.pos + t * ray.dir) - pos);
+		hit.material = sphere.material;
+		hit.backface = false;
+		return true;
+	}
+
 	return true;
 }
 
@@ -148,7 +157,11 @@ bool intersectTriangle(vec3 p0, vec3 p1, vec3 p2, Ray ray, inout Hit hit) {
 	if (t > 0 && t < hit.t) {
 		hit.t = t;
 		hit.normal = normalize(cross(edge2, edge1));
-		if (dot(ray.dir, hit.normal) > 0) hit.normal *= -1;
+		if (dot(ray.dir, hit.normal) > 0) {
+			hit.normal *= -1;
+			hit.backface = true;
+		}
+		else hit.backface = false;
 		return true;
 	}
 	return false;
@@ -223,7 +236,7 @@ vec3 traceRay(in Ray ray) {
 	
 	Hit lastHit;
 	
-	for (uint bounce = 0; bounce < 2; bounce++) {
+	for (uint bounce = 0; bounce < 4; bounce++) {
 		Hit hit;
 		hit.t = 1.0 / 0.0;
 	

@@ -1,7 +1,7 @@
 
 #include "scene.h"
 
-Scene::Scene(GLFWwindow* window_) : TEXTURE_WIDTH(1024), TEXTURE_HEIGHT(1024), COMP_DIM_X(512), COMP_DIM_Y(16) {
+Scene::Scene(GLFWwindow* window_) : TEXTURE_WIDTH(512), TEXTURE_HEIGHT(512), COMP_DIM_X(128), COMP_DIM_Y(128) {
 	window = window_;
 	camera = new Camera(window);
 	shaders = new Shader("default.vert", "default.frag", "raytracer.comp");
@@ -102,8 +102,8 @@ void Scene::setupSceneObjects() {
 	pointLightsVec.push_back(PointLight(glm::vec4(5, 25, -5, 1.0), lightMaterial2));
 
 
-	//Material sphereMaterial(glm::vec4(1, 16, 0, 0), glm::vec4(0.8, 0.3, 0.3, 1.0), glm::vec4(0.2), glm::vec4(0));
-	//const int numX = 4, numY = 4;
+	//Material sphereMaterial(glm::vec4(0.2, 16, 0, 0), glm::vec4(0.8, 0.3, 0.3, 1.0), glm::vec4(0, 1, 0, 1), glm::vec4(0));
+	//const int numX = 2, numY = 4;
 	//for (int i = -numX / 2; i < numX / 2; i++) {
 	//	for (int j = -numY / 2; j < numY / 2; j++) {
 	//		spheresVec.push_back(Sphere(glm::vec4(i, 2, j, 0.4), sphereMaterial));
@@ -113,7 +113,7 @@ void Scene::setupSceneObjects() {
 	spheresVec.push_back(Sphere(glm::vec4(0, 0, 0, 0.2), 
 		Material(glm::vec4(0, 16, 0, 0), glm::vec4(1.0, 0.2, 0.4, 1.0), glm::vec4(0.8), glm::vec4(0))));
 	spheresVec.push_back(Sphere(glm::vec4(-0.5, -0.5, -0.5, 0.4),
-		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.1, 0.9, 1.0), glm::vec4(0.9), glm::vec4(0))));
+		Material(glm::vec4(0.001, 16, 0, 0), glm::vec4(0.5, 0.1, 0.9, 1.0), glm::vec4(0.9), glm::vec4(0))));
 	spheresVec.push_back(Sphere(glm::vec4(-0.5, 0.0, 0.5, 0.3),
 		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.1, 0.7, 0.2, 1.0), glm::vec4(0.5), glm::vec4(0))));
 	spheresVec.push_back(Sphere(glm::vec4(0.5, 0.0, -0.5, 0.3),
@@ -121,7 +121,12 @@ void Scene::setupSceneObjects() {
 	spheresVec.push_back(Sphere(glm::vec4(0.5, 0.5, 0.5, 0.1),
 		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.3, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0))));
 
-	quadsVec.push_back(Quad(glm::vec4(-5, -1, -5, 1), glm::vec4(5, -1, -5, 1), glm::vec4(-5, -1, 5, 1), glm::vec4(5, -1, 5, 1),
+	spheresVec.push_back(Sphere(glm::vec4(0.5, 0.5, 0.5, 0.1),
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.3, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0))));
+
+	int quadDim = 2;
+	quadsVec.push_back(Quad(glm::vec4(-quadDim, -1, -quadDim, 1), glm::vec4(quadDim, -1, -quadDim, 1), 
+		glm::vec4(-quadDim, -1, quadDim, 1), glm::vec4(quadDim, -1, quadDim, 1),
 		Material(glm::vec4(1, 16, 0, 0), glm::vec4(1.0, 0.3, 0.3, 1.0), glm::vec4(0.2), glm::vec4(0))));
 }
 

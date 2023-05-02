@@ -46,6 +46,7 @@ struct Material {
 
 	glm::vec4 diffuseColor;		// vec4(0) if the material type IS an emitter
 	glm::vec4 specularColor;	// vec4(0) if the material type IS an emitter
+	glm::vec4 refractionColor;
 	glm::vec4 emissionColor;	// vec4(0) if the material type is NOT an emitter
 };
 
