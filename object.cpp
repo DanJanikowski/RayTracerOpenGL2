@@ -20,9 +20,11 @@ Material::~Material() {}
 //========================================================
 
 PointLight::PointLight() {
+	pos = glm::vec4(0);
 	material = Material();
 }
-PointLight::PointLight(Material material_) {
+PointLight::PointLight(glm::vec4 pos_, Material material_) {
+	pos = pos_;
 	material = material_;
 }
 PointLight::~PointLight() {}
@@ -58,18 +60,18 @@ Triangle::~Triangle() {}
 
 //========================================================
 
-Plane::Plane() {
+Quad::Quad() {
 	c00 = glm::vec4(0);
 	c10 = glm::vec4(0);
 	c01 = glm::vec4(0);
 	c11 = glm::vec4(0);
 	material = Material();
 }
-Plane::Plane(glm::vec4 c00_, glm::vec4 c10_, glm::vec4 c01_, glm::vec4 c11_, Material material_) {
+Quad::Quad(glm::vec4 c00_, glm::vec4 c10_, glm::vec4 c01_, glm::vec4 c11_, Material material_) {
 	c00 = c00_;
 	c10 = c10_;
 	c01 = c01_;
 	c11 = c11_;
 	material = material_;
 }
-Plane::~Plane() {}
+Quad::~Quad() {}

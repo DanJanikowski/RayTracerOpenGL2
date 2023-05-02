@@ -2,6 +2,9 @@
 
 #define MAX_OBJECT_COUNT 16
 
+#define EPSILON 0.0001
+#define PI 3.1415926538
+
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 // Data transfered from parent application
@@ -21,10 +24,19 @@ uniform vec3 ray11;
 
 
 struct Material {
+	// data.x - roughness = how distrubed the reflectance rays are/percentage chance to reflect/absorb
+	// data.y - shininess = blinn phong exponent
+	// data.z - index of refraction
+	// data.w - lightPower = if the material type is a light defines the lights power otherwise 0
 	vec4 data;
-	vec4 diffuseColor;
-	vec4 specularColor;
-	vec4 emissionColor;
+	vec3 diffuseColor;
+	vec3 specularColor;
+	vec3 emissionColor;
+};
+
+struct PointLight {
+	vec4 pos;
+	Material material;
 };
 
 struct Sphere {
@@ -32,7 +44,7 @@ struct Sphere {
 	Material material;
 };
 
-struct Plane {
+struct Quad {
 	vec4 c00;
 	vec4 c10;
 	vec4 c01;
@@ -40,18 +52,22 @@ struct Plane {
 	Material material;
 };
 
-layout(std140, binding = 1) uniform SphereBuffer {
+layout(std140, binding = 1) uniform PointLightBuffer {
+	PointLight lights[MAX_OBJECT_COUNT];
+};
+
+layout(std140, binding = 2) uniform SphereBuffer {
 	Sphere spheres[MAX_OBJECT_COUNT];
 };
 
-layout(std140, binding = 2) uniform PlaneBuffer {
-	Plane planes[MAX_OBJECT_COUNT];
+layout(std140, binding = 3) uniform QuadBuffer {
+	Quad quads[MAX_OBJECT_COUNT];
 };
 
 
 
 const vec3 lightPos = vec3(-10, 20, 15);
-const vec4 lightColor = vec4(1, 1, 1, 1);
+const vec3 lightColor = vec3(1, 1, 1);
 const float lightPower = 800.0;
 
 
@@ -138,15 +154,15 @@ bool intersectTriangle(vec3 p0, vec3 p1, vec3 p2, Ray ray, inout Hit hit) {
 	return false;
 }
 
-bool intersectPlane(Plane plane, Ray ray, inout Hit hit) {
-	bool intersect = intersectTriangle(plane.c00.xyz, plane.c10.xyz, plane.c11.xyz, ray, hit);
+bool intersectQuad(Quad quad, Ray ray, inout Hit hit) {
+	bool intersect = intersectTriangle(quad.c00.xyz, quad.c10.xyz, quad.c11.xyz, ray, hit);
 	if (intersect) {
-		hit.material = plane.material;
+		hit.material = quad.material;
 		return true;
 	}
-	intersect = intersectTriangle(plane.c00.xyz, plane.c11.xyz, plane.c01.xyz, ray, hit);
+	intersect = intersectTriangle(quad.c00.xyz, quad.c11.xyz, quad.c01.xyz, ray, hit);
 	if (intersect) {
-		hit.material = plane.material;
+		hit.material = quad.material;
 		return true;
 	}
 	return false;
@@ -160,60 +176,12 @@ bool castRay(in Ray ray, inout Hit hit) {
 		intersect = intersectSphere(spheres[i], ray, hit) || intersect;
 	}
 	
-	//// Planes
+	// Planes
 	for (int i = 0; i < 1; i++) {
-		intersect = intersectPlane(planes[i], ray, hit) || intersect;
+		intersect = intersectQuad(quads[i], ray, hit) || intersect;
 	}
 
 	return intersect;
-}
-
-// Traces a singular ray and returns the hit color
-vec4 traceRay(in Ray ray) {
-	vec4 color = vec4(0);
-	vec4 ambientColor = vec4(0.03, 0.9, 0.98, 1.0);
-
-	Hit lastHit;
-
-	for (uint bounce = 0; bounce < 3; bounce++) {
-		Hit hit;
-		hit.t = 1.0 / 0.0;
-
-		// Blinn Phong Shading
-		if (castRay(ray, hit)) {
-			vec3 hitPoint = ray.pos + hit.t * ray.dir;
-			vec3 e = -ray.dir;
-			vec3 l = lightPos - hitPoint;
-			float distance = length(l);
-			l = normalize(l);
-			
-			float lambertian = max(dot(hit.normal, l), 0.0);
-			
-			// Blinn Phong reflectance
-			vec3 halfDir = normalize(l + e);
-			float specAngle = max(dot(halfDir, hit.normal), 0.0);
-			float specularity = pow(specAngle, hit.material.data.z);
-			
-			if (bounce == 0) {
-				color += (hit.material.diffuseColor * lambertian + (hit.material.specularColor) * specularity) * 
-								lightColor * lightPower / (distance * distance);
-			}
-			else {
-				color += lastHit.material.specularColor * (hit.material.diffuseColor * lambertian + (hit.material.specularColor) * specularity) * 
-								lightColor * lightPower / (distance * distance);
-			}
-			
-			lastHit = hit;
-			ray.dir = reflect(ray.dir, hit.normal);
-			ray.pos = hitPoint + ray.dir * 0.00001;
-		}
-		else {
-			color += ambientColor;
-			break;
-		}
-	}
-
-	return color;
 }
 
 float random(vec2 st) {
@@ -222,6 +190,117 @@ float random(vec2 st) {
 
 vec3 randVec(vec3 vec){
 	return vec3(random(vec2(time, vec.x)), random(vec2(time, vec.y)), random(vec2(time, vec.z)));
+}
+
+mat3x3 getTangentSpace(vec3 normal) {
+    // Choose a helper vector for the cross product
+    vec3 helper = vec3(1, 0, 0);
+    if (abs(normal.x) > 0.99)
+        helper = vec3(0, 0, 1);
+
+    // Generate vectors
+    vec3 tangent = normalize(cross(normal, helper));
+    vec3 binormal = normalize(cross(normal, tangent));
+    return mat3x3(tangent, binormal, normal);
+}
+
+vec3 sampleHemisphere(vec3 normal, float alpha, vec2 seed) {
+    // Sample the hemisphere, where alpha determines the kind of the sampling
+    float cosTheta = pow(random(seed), 1.0 / (alpha + 1.0));
+    float sinTheta = sqrt(1.0 - cosTheta * cosTheta);
+    float phi = 2 * PI * random(seed.yx);
+    vec3 tangentSpaceDir = vec3(cos(phi) * sinTheta, sin(phi) * sinTheta, cosTheta);
+
+    // Transform direction to world space
+    return getTangentSpace(normal) * tangentSpaceDir;
+}
+
+// Traces a singular ray and returns the hit color
+vec3 traceRay(in Ray ray) {
+	vec3 totalColor = vec3(0);
+	vec3 energy = vec3(1);
+	vec3 ambientColor = vec3(0.1, 0.313, 0.43);
+	
+	Hit lastHit;
+	
+	for (uint bounce = 0; bounce < 2; bounce++) {
+		Hit hit;
+		hit.t = 1.0 / 0.0;
+	
+		// If the ray hits an object...
+		if (castRay(ray, hit)) {
+			// Emissive object
+			totalColor += energy * hit.material.emissionColor * hit.material.data.w;
+	
+			// Direct Light
+			vec3 directIllum = vec3(0);
+			// NOTE offset the hitpoint by the normal * EPSILON
+			vec3 hitPoint = ray.pos + hit.t * ray.dir + hit.normal * EPSILON;
+			for (uint lightInd = 0; lightInd < lights.length(); lightInd++) {
+				PointLight light = lights[lightInd];
+	
+				vec3 pTol = light.pos.xyz - hitPoint;
+				float attenuation = pow(length(pTol), 2);
+				pTol = normalize(pTol);
+	
+				// If the surface has roughness
+				if (hit.material.data.x > 0) {
+					// TODO
+					// This light hit algorithm assumes all lights are point lights with no surface
+					// Simply checking if the ray to the light intersects some surface
+					// If it does then we are obstructed by another shape -> cast shadow
+					// Otherwise do normal lighting
+					Hit tempHit;
+					if (!castRay(Ray(hitPoint, pTol), tempHit)) {
+						// Blinn Phong
+						// Diffuse
+						float lambertian = clamp(dot(hit.normal, pTol), 0.0, 1.0);
+						directIllum += hit.material.diffuseColor * light.material.emissionColor * light.material.data.w * lambertian / attenuation;
+					}
+				}
+				// Specular
+				vec3 halfDir = normalize(pTol - ray.dir);
+				float specAngle = max(dot(halfDir, hit.normal), 0.0);
+				float specularity = pow(specAngle, hit.material.data.y);
+				directIllum += hit.material.specularColor * light.material.emissionColor * specularity * light.material.data.w / attenuation;
+			}
+			totalColor += energy * directIllum;
+	
+			// Indirect Light
+			float diffuseChance = dot(hit.material.diffuseColor, vec3(1/3.0));
+			float reflectChance = dot(hit.material.specularColor, vec3(1/3.0));
+
+			float roulette = random(vec2(time, time + 1) + hit.normal.yx + ray.dir.xz);
+			if (roulette < reflectChance) {
+				// Specular reflection
+				float smoothness = 1.0 - hit.material.data.x;
+				float alpha = pow(1000.0, smoothness*smoothness);
+				if (smoothness == 1.0) {
+					ray.dir = reflect(ray.dir, hit.normal);
+				} else {
+					ray.dir = sampleHemisphere(reflect(ray.dir, hit.normal), alpha, vec2(time, bounce) + hit.normal.zx + ray.dir.xy);
+				}
+				ray.pos = hitPoint + ray.dir * EPSILON;
+				float f = (alpha + 2) / (alpha + 1);
+				energy *= hit.material.specularColor * clamp(dot(hit.normal, ray.dir) * f, 0.0, 1.0);
+			}
+			else if (diffuseChance > 0 && roulette < reflectChance + diffuseChance) {
+				// Diffuse reflection
+				ray.dir = sampleHemisphere(hit.normal, 1.0, hitPoint.zx+vec2(hitPoint.y)+vec2(time, bounce));
+				ray.pos = hitPoint + ray.dir * EPSILON;
+				energy *= hit.material.diffuseColor * clamp(dot(hit.normal, ray.dir), 0.0, 1.0);
+			} else {
+				// This means both the hit material's albedo and specular are totally black, so there won't be anymore light. We can stop here.
+				break;
+			}
+		}
+		else {
+			totalColor += energy * ambientColor;
+			break;
+		}
+	}
+	
+	return totalColor;
 }
 
 // Creates the start ray through the current pixel
@@ -255,7 +334,7 @@ void main() {
 	ivec2 curCoord;
 
 	Ray ray;
-	vec4 pixelColor = vec4(0);
+	vec3 pixelColor = vec3(0);
 	// If the workgroup block is not the same size as the image dimension
 	//	tile the current working core as many times as necessary to fill the image
 	for (int yi = 0; yi < numGroups.y; yi++) {
@@ -263,16 +342,364 @@ void main() {
 			curCoord = texelCoord + ivec2(xi, yi) * ivec2(gl_NumWorkGroups.xy);
 	
 			//ray = getStartRay(curCoord, imDim);
-			//imageStore(imgOutput, curCoord, traceRay(ray));
+			//imageStore(imgOutput, curCoord, vec4(traceRay(ray), 1));
 
 			ray = getJitteredStartRay(curCoord, imDim, imageLoad(imgOutput, curCoord).xyz);
 			if (numAccumFrames == 1) {
 				pixelColor = traceRay(ray);
 			}
 			else {
-				pixelColor = ((imageLoad(imgOutput, curCoord) * (numAccumFrames - 1)) + traceRay(ray)) / numAccumFrames;
+				pixelColor = ((imageLoad(imgOutput, curCoord).xyz * (numAccumFrames - 1)) + traceRay(ray)) / numAccumFrames;
 			}
-			imageStore(imgOutput, curCoord, pixelColor);
+			imageStore(imgOutput, curCoord, vec4(pixelColor, 1.0));
 		}
 	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+//#version 460 core
+//
+//#define MAX_OBJECT_COUNT 16
+//
+//layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+//
+//// Data transfered from parent application
+//layout(rgba32f, binding = 0) uniform image2D imgOutput;
+//
+//uniform float time;
+//
+//uniform vec3 cameraPos;
+//uniform vec3 cameraDir;
+//
+//uniform int numAccumFrames;
+//
+//uniform vec3 ray00;
+//uniform vec3 ray10;
+//uniform vec3 ray01;
+//uniform vec3 ray11;
+//
+//
+//struct Material {
+//	vec4 data;
+//	vec3 diffuseColor;
+//	vec3 specularColor;
+//	vec3 emissionColor;
+//};
+//
+//struct PointLight {
+//	vec4 pos;
+//	Material material;
+//};
+//
+//struct Sphere {
+//	vec4 posRad;
+//	Material material;
+//};
+//
+//struct Plane {
+//	vec4 c00;
+//	vec4 c10;
+//	vec4 c01;
+//	vec4 c11;
+//	Material material;
+//};
+//
+//layout(std140, binding = 1) uniform PointLightBuffer {
+//	PointLight lights[MAX_OBJECT_COUNT];
+//};
+//
+//layout(std140, binding = 2) uniform SphereBuffer {
+//	Sphere spheres[MAX_OBJECT_COUNT];
+//};
+//
+//layout(std140, binding = 3) uniform PlaneBuffer {
+//	Plane planes[MAX_OBJECT_COUNT];
+//};
+//
+//
+//
+//const vec3 lightPos = vec3(-10, 20, 15);
+//const vec3 lightColor = vec3(1, 1, 1);
+//const float lightPower = 800.0;
+//
+//
+//// Local structs
+//struct Ray {
+//	vec3 pos;
+//	vec3 dir;
+//};
+//
+//struct Hit {
+//	float t;
+//	vec3 normal;
+//	Material material;
+//};
+//
+//// Function to test float equality
+//bool isEqual(float x, float y) {
+//	return (abs(x - y) < 0.0000001);
+//}
+//
+//bool intersectSphere(Sphere sphere, Ray ray, inout Hit hit) {
+//	vec3 pos = sphere.posRad.xyz;
+//	float rad = sphere.posRad.w;
+//	
+//	float a = dot(ray.dir, ray.dir);
+//	vec3 sToR = ray.pos - pos;
+//	float b = 2.0 * dot(sToR, ray.dir);
+//	float c = dot(sToR, sToR) - rad * rad;
+//	float disc = b * b - 4.0 * a * c;
+//	if (disc <= 0) return false;
+//	float t = (-b - sqrt(disc)) / (2.0 * a);
+//	if (t <= 0) return false;
+//	if (t < hit.t) {
+//		hit.t = t;
+//		hit.normal = normalize((ray.pos + t * ray.dir) - pos);
+//		hit.material = sphere.material;
+//		return true;
+//	}
+//
+//
+//	// If this t <= 0 then we are inside the sphere OR facing backwards
+//	//if (t <= 0) {
+//	//	t = (-b + sqrt(disc)) / (2.0 * a);
+//	//	// If this t <= 0 then we are backwards
+//	//	if (t <= 0) return false;
+//	//	// If not then return the negative normal for the inside face of the sphere
+//	//	if (t < hit.t) {
+//	//		hit.t = t;
+//	//		hit.normal = -normalize((ray.pos + t * ray.dir) - pos);
+//	//		hit.material = sphere.material;
+//	//		return true;
+//	//	}
+//	//}
+//	//if (t < hit.t) {
+//	//	hit.t = t;
+//	//	hit.normal = normalize((ray.pos + t * ray.dir) - pos);
+//	//	hit.material = sphere.material;
+//	//	return true;
+//	//}
+//	return true;
+//}
+//
+//// Subroutine for plane intersection
+//bool intersectTriangle(vec3 p0, vec3 p1, vec3 p2, Ray ray, inout Hit hit) {
+//	vec3 edge1 = p1 - p0;
+//	vec3 edge2 = p2 - p0;
+//	vec3 h = cross(ray.dir, edge2);
+//	float a = dot(edge1, h);
+//	if (isEqual(a, 0)) return false; // Check if ray is parallel
+//	float f = 1.0 / a;
+//	vec3 s = ray.pos - p0;
+//	float u = f * dot(s, h);
+//	if (u < 0 || u > 1.0) return false;
+//	vec3 q = cross(s, edge1);
+//	float v = f * dot(ray.dir, q);
+//	if (v < 0.0 || u + v > 1.0) return false;
+//	float t = f * dot(edge2, q);
+//	if (t > 0 && t < hit.t) {
+//		hit.t = t;
+//		hit.normal = normalize(cross(edge2, edge1));
+//		if (dot(ray.dir, hit.normal) > 0) hit.normal *= -1;
+//		return true;
+//	}
+//	return false;
+//}
+//
+//bool intersectPlane(Plane plane, Ray ray, inout Hit hit) {
+//	bool intersect = intersectTriangle(plane.c00.xyz, plane.c10.xyz, plane.c11.xyz, ray, hit);
+//	if (intersect) {
+//		hit.material = plane.material;
+//		return true;
+//	}
+//	intersect = intersectTriangle(plane.c00.xyz, plane.c11.xyz, plane.c01.xyz, ray, hit);
+//	if (intersect) {
+//		hit.material = plane.material;
+//		return true;
+//	}
+//	return false;
+//}
+//
+//bool castRay(in Ray ray, inout Hit hit) {
+//	bool intersect = false;
+//
+//	// First spheres
+//	for (int i = 0; i < MAX_OBJECT_COUNT; i++) {
+//		intersect = intersectSphere(spheres[i], ray, hit) || intersect;
+//	}
+//	
+//	//// Planes
+//	for (int i = 0; i < 1; i++) {
+//		intersect = intersectPlane(planes[i], ray, hit) || intersect;
+//	}
+//
+//	return intersect;
+//}
+//
+//// Traces a singular ray and returns the hit color
+//vec3 traceRay(in Ray ray) {
+//	vec3 totalColor = vec3(0);
+//	vec3 energy = vec3(1);
+//	vec3 ambientColor = vec3(0.03, 0.9, 0.98);
+//
+//	Hit lastHit;
+//
+//	for (uint bounce = 0; bounce < 1; bounce++) {
+//		Hit hit;
+//		hit.t = 1.0 / 0.0;
+//
+//		// Blinn Phong Shading
+//		if (castRay(ray, hit)) {
+//			vec3 hitPoint = ray.pos + hit.t * ray.dir;
+//			vec3 e = -ray.dir;
+//			vec3 l = lightPos - hitPoint;
+//			float distance = length(l);
+//			l = normalize(l);
+//			
+//			float lambertian = max(dot(hit.normal, l), 0.0);
+//			
+//			// Blinn Phong reflectance
+//			vec3 halfDir = normalize(l + e);
+//			float specAngle = max(dot(halfDir, hit.normal), 0.0);
+//			float specularity = pow(specAngle, hit.material.data.y);
+//			
+//			if (bounce == 0) {
+//				totalColor += (hit.material.diffuseColor * lambertian + (hit.material.specularColor) * specularity) * 
+//								lightColor * lightPower / (distance * distance);
+//			}
+//			else {
+//				totalColor += lastHit.material.specularColor * (hit.material.diffuseColor * lambertian + (hit.material.specularColor) * specularity) * 
+//								lightColor * lightPower / (distance * distance);
+//			}
+//			
+//			lastHit = hit;
+//			ray.dir = reflect(ray.dir, hit.normal);
+//			ray.pos = hitPoint + ray.dir * 0.00001;
+//		}
+//		else {
+//			totalColor += ambientColor;
+//			break;
+//		}
+//	}
+//
+//	return totalColor;
+//
+//
+//
+//	//vec4 color = vec4(0);
+//	//vec4 ambientColor = vec4(0.03, 0.9, 0.98, 1.0);
+//	//
+//	//Hit lastHit;
+//	//
+//	//for (uint bounce = 0; bounce < 2; bounce++) {
+//	//	Hit hit;
+//	//	hit.t = 1.0 / 0.0;
+//	//
+//	//	// Blinn Phong Shading
+//	//	if (castRay(ray, hit)) {
+//	//		vec3 hitPoint = ray.pos + hit.t * ray.dir;
+//	//		vec3 e = -ray.dir;
+//	//		vec3 l = lightPos - hitPoint;
+//	//		float distance = length(l);
+//	//		l = normalize(l);
+//	//		
+//	//		float lambertian = max(dot(hit.normal, l), 0.0);
+//	//		
+//	//		// Blinn Phong reflectance
+//	//		vec3 halfDir = normalize(l + e);
+//	//		float specAngle = max(dot(halfDir, hit.normal), 0.0);
+//	//		float specularity = pow(specAngle, hit.material.data.z);
+//	//		
+//	//		if (bounce == 0) {
+//	//			color += (hit.material.diffuseColor * lambertian + (hit.material.specularColor) * specularity) * 
+//	//							lightColor * lightPower / (distance * distance);
+//	//		}
+//	//		else {
+//	//			color += lastHit.material.specularColor * (hit.material.diffuseColor * lambertian + (hit.material.specularColor) * specularity) * 
+//	//							lightColor * lightPower / (distance * distance);
+//	//		}
+//	//		
+//	//		lastHit = hit;
+//	//		ray.dir = reflect(ray.dir, hit.normal);
+//	//		ray.pos = hitPoint + ray.dir * 0.00001;
+//	//	}
+//	//	else {
+//	//		color += ambientColor;
+//	//		break;
+//	//	}
+//	//}
+//	//
+//	//return color;
+//}
+//
+//float random(vec2 st) {
+//    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+//}
+//
+//vec3 randVec(vec3 vec){
+//	return vec3(random(vec2(time, vec.x)), random(vec2(time, vec.y)), random(vec2(time, vec.z)));
+//}
+//
+//// Creates the start ray through the current pixel
+//Ray getStartRay(ivec2 txlCoords, ivec2 imDim) {
+//	Ray ray;
+//	ray.pos = cameraPos;
+//	
+//	vec2 tpos = vec2(txlCoords) / vec2(imDim.x, imDim.y);
+//	vec3 rayDir = mix(mix(ray00, ray01, tpos.y), mix(ray10, ray11, tpos.y), tpos.x);
+//	ray.dir = normalize(rayDir - cameraPos);
+//	
+//	return ray;
+//}
+//Ray getJitteredStartRay(ivec2 txlCoords, ivec2 imDim, vec3 randOffset) {
+//	Ray ray;
+//	ray.pos = cameraPos;
+//	
+//	vec2 tpos = vec2(txlCoords) / vec2(imDim.x, imDim.y);
+//	vec3 rayDir = mix(mix(ray00, ray01, tpos.y), mix(ray10, ray11, tpos.y), tpos.x);
+//	ray.dir = normalize(rayDir - cameraPos) + 0.002 * randVec(rayDir + randOffset);
+//	
+//	return ray;
+//}
+//
+//void main() {	
+//	ivec2 imDim = imageSize(imgOutput);
+//
+//	ivec2 numGroups = ivec2(ceil(vec2(imDim) / vec2(gl_NumWorkGroups.xy)));
+//	
+//	ivec2 texelCoord = ivec2(gl_GlobalInvocationID.xy);
+//	ivec2 curCoord;
+//
+//	Ray ray;
+//	vec4 pixelColor = vec4(0);
+//	// If the workgroup block is not the same size as the image dimension
+//	//	tile the current working core as many times as necessary to fill the image
+//	for (int yi = 0; yi < numGroups.y; yi++) {
+//		for (int xi = 0; xi < numGroups.x; xi++) {
+//			curCoord = texelCoord + ivec2(xi, yi) * ivec2(gl_NumWorkGroups.xy);
+//	
+//			ray = getStartRay(curCoord, imDim);
+//			imageStore(imgOutput, curCoord, vec4(traceRay(ray), 1));
+//
+//			//ray = getJitteredStartRay(curCoord, imDim, imageLoad(imgOutput, curCoord).xyz);
+//			//if (numAccumFrames == 1) {
+//			//	pixelColor = traceRay(ray);
+//			//}
+//			//else {
+//			//	pixelColor = ((imageLoad(imgOutput, curCoord) * (numAccumFrames - 1)) + traceRay(ray)) / numAccumFrames;
+//			//}
+//			//imageStore(imgOutput, curCoord, pixelColor);
+//		}
+//	}
+//}

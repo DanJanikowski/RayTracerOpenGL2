@@ -38,7 +38,8 @@ private:
 	const unsigned int COMP_DIM_X, COMP_DIM_Y;
 
 	std::vector<Sphere> spheresVec;
-	std::vector<Plane> planesVec;
+	std::vector<Quad> quadsVec;
+	std::vector<PointLight> pointLightsVec;
 
 	// Variables for textured screen quad
 	GLuint texID;

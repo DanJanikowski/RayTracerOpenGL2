@@ -95,29 +95,34 @@ void Scene::setupScreenQuad() {
 * Create and add all scene objects to local vectors
 */
 void Scene::setupSceneObjects() {
-	Material material(glm::vec4(0, 0, 16, 0), glm::vec4(0.8, 0.3, 0.3, 1.0), glm::vec4(0.2), glm::vec4(0));
-	//spheresVec.push_back(Sphere(glm::vec4(0, 0, 0, 0.4), material));
+	Material lightMaterial(glm::vec4(0, 0, 0, 300), glm::vec4(0), glm::vec4(0), glm::vec4(1));
+	pointLightsVec.push_back(PointLight(glm::vec4(-7, 15, 10, 1.0), lightMaterial));
 
-	const int numX = 4, numY = 4;
-	for (int i = -numX / 2; i < numX / 2; i++) {
-		for (int j = -numY / 2; j < numY / 2; j++) {
-			spheresVec.push_back(Sphere(glm::vec4(i, 2, j, 0.4), material));
-		}
-	}
+	Material lightMaterial2(glm::vec4(0, 0, 0, 400), glm::vec4(0), glm::vec4(0), glm::vec4(1));
+	pointLightsVec.push_back(PointLight(glm::vec4(5, 25, -5, 1.0), lightMaterial2));
 
-	//spheresVec.push_back(Sphere(glm::vec4(0, 0, 0, 0.2), 
-	//	Material(glm::vec4(0, 0, 16, 0), glm::vec4(1.0, 0.2, 0.4, 1.0), glm::vec4(0.2), glm::vec4(0))));
-	//spheresVec.push_back(Sphere(glm::vec4(-0.5, -0.5, -0.5, 0.4),
-	//	Material(glm::vec4(0, 0, 16, 0), glm::vec4(0.5, 0.1, 0.9, 1.0), glm::vec4(0.2), glm::vec4(0))));
-	//spheresVec.push_back(Sphere(glm::vec4(-0.5, 0.0, 0.5, 0.3),
-	//	Material(glm::vec4(0, 0, 16, 0), glm::vec4(0.1, 0.7, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0))));
-	//spheresVec.push_back(Sphere(glm::vec4(0.5, 0.0, -0.5, 0.3),
-	//	Material(glm::vec4(0, 0, 16, 0), glm::vec4(0.3, 0.7, 0.6, 1.0), glm::vec4(0.2), glm::vec4(0))));
-	//spheresVec.push_back(Sphere(glm::vec4(0.5, 0.5, 0.5, 0.1),
-	//	Material(glm::vec4(0, 0, 16, 0), glm::vec4(0.5, 0.3, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0))));
 
-	planesVec.push_back(Plane(glm::vec4(-1, -1, -1, 1), glm::vec4(1, -1, -1, 1), glm::vec4(-1, -1, 1, 1), glm::vec4(1, -1, 1, 1),
-		Material(glm::vec4(0, 0, 16, 0), glm::vec4(1.0, 0.3, 0.3, 1.0), glm::vec4(0.2), glm::vec4(0))));
+	//Material sphereMaterial(glm::vec4(1, 16, 0, 0), glm::vec4(0.8, 0.3, 0.3, 1.0), glm::vec4(0.2), glm::vec4(0));
+	//const int numX = 4, numY = 4;
+	//for (int i = -numX / 2; i < numX / 2; i++) {
+	//	for (int j = -numY / 2; j < numY / 2; j++) {
+	//		spheresVec.push_back(Sphere(glm::vec4(i, 2, j, 0.4), sphereMaterial));
+	//	}
+	//}
+
+	spheresVec.push_back(Sphere(glm::vec4(0, 0, 0, 0.2), 
+		Material(glm::vec4(0, 16, 0, 0), glm::vec4(1.0, 0.2, 0.4, 1.0), glm::vec4(0.8), glm::vec4(0))));
+	spheresVec.push_back(Sphere(glm::vec4(-0.5, -0.5, -0.5, 0.4),
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.1, 0.9, 1.0), glm::vec4(0.9), glm::vec4(0))));
+	spheresVec.push_back(Sphere(glm::vec4(-0.5, 0.0, 0.5, 0.3),
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.1, 0.7, 0.2, 1.0), glm::vec4(0.5), glm::vec4(0))));
+	spheresVec.push_back(Sphere(glm::vec4(0.5, 0.0, -0.5, 0.3),
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.3, 0.7, 0.6, 1.0), glm::vec4(0.2), glm::vec4(0))));
+	spheresVec.push_back(Sphere(glm::vec4(0.5, 0.5, 0.5, 0.1),
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.3, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0))));
+
+	quadsVec.push_back(Quad(glm::vec4(-5, -1, -5, 1), glm::vec4(5, -1, -5, 1), glm::vec4(-5, -1, 5, 1), glm::vec4(5, -1, 5, 1),
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(1.0, 0.3, 0.3, 1.0), glm::vec4(0.2), glm::vec4(0))));
 }
 
 /*
@@ -131,6 +136,19 @@ void Scene::setupComputeShaderData() {
 	unsigned int blockIndexSUBO;
 	GLuint bindingIndexSUBO;
 
+	// Point Light UBO
+	GLuint pointLightUBO;
+	glGenBuffers(1, &pointLightUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, pointLightUBO);
+	glBufferData(GL_UNIFORM_BUFFER, pointLightsVec.size() * sizeof(PointLight), &pointLightsVec[0], GL_STATIC_DRAW);
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+	glUnmapBuffer(GL_UNIFORM_BUFFER);
+	blockIndexSUBO = glGetUniformBlockIndex(shaders->compShaderID, "pointLightData");
+	bindingIndexSUBO = 1;
+	glBindBufferBase(GL_UNIFORM_BUFFER, bindingIndexSUBO, pointLightUBO);
+	glUniformBlockBinding(shaders->compShaderID, blockIndexSUBO, bindingIndexSUBO);
+
+	// Sphere UBO
 	GLuint sphereUBO;
 	glGenBuffers(1, &sphereUBO);
 	glBindBuffer(GL_UNIFORM_BUFFER, sphereUBO);
@@ -138,19 +156,20 @@ void Scene::setupComputeShaderData() {
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glUnmapBuffer(GL_UNIFORM_BUFFER);
 	blockIndexSUBO = glGetUniformBlockIndex(shaders->compShaderID, "sphereData");
-	bindingIndexSUBO = 1;
+	bindingIndexSUBO = 2;
 	glBindBufferBase(GL_UNIFORM_BUFFER, bindingIndexSUBO, sphereUBO);
 	glUniformBlockBinding(shaders->compShaderID, blockIndexSUBO, bindingIndexSUBO);
 
-	GLuint planeUBO;
-	glGenBuffers(1, &planeUBO);
-	glBindBuffer(GL_UNIFORM_BUFFER, planeUBO);
-	glBufferData(GL_UNIFORM_BUFFER, planesVec.size() * sizeof(Plane), &planesVec[0], GL_STATIC_DRAW);
+	// Plane UBO
+	GLuint quadUBO;
+	glGenBuffers(1, &quadUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, quadUBO);
+	glBufferData(GL_UNIFORM_BUFFER, quadsVec.size() * sizeof(Quad), &quadsVec[0], GL_STATIC_DRAW);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glUnmapBuffer(GL_UNIFORM_BUFFER);
-	blockIndexSUBO = glGetUniformBlockIndex(shaders->compShaderID, "planeData");
-	bindingIndexSUBO = 2;
-	glBindBufferBase(GL_UNIFORM_BUFFER, bindingIndexSUBO, planeUBO);
+	blockIndexSUBO = glGetUniformBlockIndex(shaders->compShaderID, "quadData");
+	bindingIndexSUBO = 3;
+	glBindBufferBase(GL_UNIFORM_BUFFER, bindingIndexSUBO, quadUBO);
 	glUniformBlockBinding(shaders->compShaderID, blockIndexSUBO, bindingIndexSUBO);
 
 

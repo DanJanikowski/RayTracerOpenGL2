@@ -20,6 +20,15 @@ struct Material {
 	~Material();
 
 	// Stores material data: 
+	// data.x - roughness = how distrubed the reflectance rays are/percentage chance to reflect/absorb
+	// data.y - shininess = blinn phong exponent
+	// data.z - index of refraction
+	// data.w - lightPower = if the material type is a light defines the lights power otherwise 0
+	// 
+	// 
+	// 
+	// 
+	// OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD 
 	// data.x - material type = (normal mat, light, dielectric as an integer 0, 1, 2...)
 	//					0 = 
 	//					1 = 
@@ -27,6 +36,11 @@ struct Material {
 	// data.y - roughness = how distrubed the reflectance rays are/percentage chance to reflect/absorb
 	// data.z - shininess = blinn phong exponent
 	// data.w - lightPower = if the material type is a light defines the lights power otherwise 0
+	// OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD OLD
+
+
+
+
 	glm::vec4 data;
 	//TODO have to add refractive index for dielectrics
 
@@ -41,9 +55,10 @@ struct Material {
 
 struct PointLight {
 	PointLight();
-	PointLight(Material material_);
+	PointLight(glm::vec4 pos_, Material material_);
 	~PointLight();
 
+	glm::vec4 pos;
 	Material material;
 };
 
@@ -69,10 +84,10 @@ struct Triangle {
 	Material material;
 };
 
-struct Plane {
-	Plane();
-	Plane(glm::vec4 c00_, glm::vec4 c10_, glm::vec4 c01_, glm::vec4 c11_, Material material_);
-	~Plane();
+struct Quad {
+	Quad();
+	Quad(glm::vec4 c00_, glm::vec4 c10_, glm::vec4 c01_, glm::vec4 c11_, Material material_);
+	~Quad();
 
 	// Plane corner vertices
 	glm::vec4 c00;
