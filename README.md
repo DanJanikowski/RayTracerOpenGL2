@@ -7,3 +7,4 @@ Progressive ray tracer implemented in OpenGL with all rendering done using a com
 
 Screenshots
 -----------
+![SimpleShadows](https://user-images.githubusercontent.com/12836864/235822866-54524f77-2b51-48c1-8139-33d3ab3e31ad.png)
