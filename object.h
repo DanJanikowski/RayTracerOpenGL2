@@ -16,7 +16,7 @@
 
 struct Material {
 	Material();
-	Material(glm::vec4 data_, glm::vec4 diffuseColor_, glm::vec4 specularColor_, glm::vec4 emissionColor_);
+	Material(glm::vec4 data_, glm::vec4 diffuseColor_, glm::vec4 specularColor_, glm::vec4 refractionColor_, glm::vec4 emissionColor_);
 	~Material();
 
 	// Stores material data: 

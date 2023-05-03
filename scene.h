@@ -65,6 +65,7 @@ private:
 	float frameTime = 0.0001;
 
 	// Uniform locations
+	GLuint skyboxID;
 	GLuint timeLoc, cameraPosLoc, cameraDirLoc, numAccumFramesLoc, ray00Loc, ray10Loc, ray01Loc, ray11Loc;
 	GLuint textureLoc;
 };

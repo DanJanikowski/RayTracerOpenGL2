@@ -1,6 +1,9 @@
 
 #include "scene.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 Scene::Scene(GLFWwindow* window_) : TEXTURE_WIDTH(512), TEXTURE_HEIGHT(512), COMP_DIM_X(128), COMP_DIM_Y(128) {
 	window = window_;
 	camera = new Camera(window);
@@ -95,11 +98,11 @@ void Scene::setupScreenQuad() {
 * Create and add all scene objects to local vectors
 */
 void Scene::setupSceneObjects() {
-	Material lightMaterial(glm::vec4(0, 0, 0, 300), glm::vec4(0), glm::vec4(0), glm::vec4(1));
-	pointLightsVec.push_back(PointLight(glm::vec4(-7, 15, 10, 1.0), lightMaterial));
+	//Material lightMaterial(glm::vec4(0, 0, 0, 300), glm::vec4(0), glm::vec4(0), glm::vec4(1));
+	//pointLightsVec.push_back(PointLight(glm::vec4(-7, 15, 10, 1.0), lightMaterial));
 
-	Material lightMaterial2(glm::vec4(0, 0, 0, 400), glm::vec4(0), glm::vec4(0), glm::vec4(1));
-	pointLightsVec.push_back(PointLight(glm::vec4(5, 25, -5, 1.0), lightMaterial2));
+	//Material lightMaterial2(glm::vec4(0, 0, 0, 400), glm::vec4(0), glm::vec4(0), glm::vec4(1));
+	//pointLightsVec.push_back(PointLight(glm::vec4(5, 25, -5, 1.0), lightMaterial2));
 
 
 	//Material sphereMaterial(glm::vec4(0.2, 16, 0, 0), glm::vec4(0.8, 0.3, 0.3, 1.0), glm::vec4(0, 1, 0, 1), glm::vec4(0));
@@ -111,29 +114,67 @@ void Scene::setupSceneObjects() {
 	//}
 
 	spheresVec.push_back(Sphere(glm::vec4(0, 0, 0, 0.2), 
-		Material(glm::vec4(0, 16, 0, 0), glm::vec4(1.0, 0.2, 0.4, 1.0), glm::vec4(0.8), glm::vec4(0))));
+		Material(glm::vec4(0, 16, 0, 0), glm::vec4(1.0, 0.2, 0.4, 1.0), glm::vec4(0.8), glm::vec4(0), glm::vec4(0))));
 	spheresVec.push_back(Sphere(glm::vec4(-0.5, -0.5, -0.5, 0.4),
-		Material(glm::vec4(0.001, 16, 0, 0), glm::vec4(0.5, 0.1, 0.9, 1.0), glm::vec4(0.9), glm::vec4(0))));
+		Material(glm::vec4(0.001, 16, 0, 0), glm::vec4(247/255.0, 217/255.0, 45/255.0, 1.0), glm::vec4(0.9), glm::vec4(0), glm::vec4(0))));
 	spheresVec.push_back(Sphere(glm::vec4(-0.5, 0.0, 0.5, 0.3),
-		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.1, 0.7, 0.2, 1.0), glm::vec4(0.5), glm::vec4(0))));
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(247 / 255.0, 45 / 255.0, 109 / 255.0, 1.0), glm::vec4(0.5), glm::vec4(0), glm::vec4(0))));
 	spheresVec.push_back(Sphere(glm::vec4(0.5, 0.0, -0.5, 0.3),
-		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.3, 0.7, 0.6, 1.0), glm::vec4(0.2), glm::vec4(0))));
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.3, 0.4, 0.4, 1.0), glm::vec4(0.2), glm::vec4(0), glm::vec4(0))));
 	spheresVec.push_back(Sphere(glm::vec4(0.5, 0.5, 0.5, 0.1),
-		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.3, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0))));
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.3, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0), glm::vec4(0))));
 
-	spheresVec.push_back(Sphere(glm::vec4(0.5, 0.5, 0.5, 0.1),
-		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.3, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0))));
+	spheresVec.push_back(Sphere(glm::vec4(0, 1, 0, 0.4),
+		Material(glm::vec4(1, 16, 1.2, 0), glm::vec4(0.5), glm::vec4(0.5), glm::vec4(1), glm::vec4(0))));
 
 	int quadDim = 2;
 	quadsVec.push_back(Quad(glm::vec4(-quadDim, -1, -quadDim, 1), glm::vec4(quadDim, -1, -quadDim, 1), 
 		glm::vec4(-quadDim, -1, quadDim, 1), glm::vec4(quadDim, -1, quadDim, 1),
-		Material(glm::vec4(1, 16, 0, 0), glm::vec4(1.0, 0.3, 0.3, 1.0), glm::vec4(0.2), glm::vec4(0))));
+		Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.3, 0.3, 0.3, 1.0), glm::vec4(0.2), glm::vec4(0), glm::vec4(0))));
+
+
+	Material sunset(glm::vec4(0, 0, 0, 6000), glm::vec4(0), glm::vec4(0), glm::vec4(0), glm::vec4(1, 0.5, 0.5, 1.0));
+	pointLightsVec.push_back(PointLight(glm::vec4(20, 20, 50, 1.0), sunset));
+
+	Material sunset2(glm::vec4(0, 0, 0, 2000), glm::vec4(0), glm::vec4(0), glm::vec4(0), glm::vec4(1, 0.5, 0.5, 1.0));
+	pointLightsVec.push_back(PointLight(glm::vec4(-5, 50, -5, 1.0), sunset2));
+
+	//Material matteGrey(glm::vec4(0.5, 16, 0, 0), glm::vec4(0.4), glm::vec4(1), glm::vec4(0));
+
+	//spheresVec.push_back(Sphere(glm::vec4(0, 0, 0, 0.2), matteGrey));
+	//spheresVec.push_back(Sphere(glm::vec4(-0.5, -0.5, -0.5, 0.4), matteGrey));
+	//spheresVec.push_back(Sphere(glm::vec4(-0.5, 0.0, 0.5, 0.3), matteGrey));
+	//spheresVec.push_back(Sphere(glm::vec4(0.5, 0.0, -0.5, 0.3), matteGrey));
+	//spheresVec.push_back(Sphere(glm::vec4(0.5, 0.5, 0.5, 0.1), matteGrey));
+
+	//spheresVec.push_back(Sphere(glm::vec4(0.5, 0.5, 0.5, 0.1),
+	//	Material(glm::vec4(1, 16, 0, 0), glm::vec4(0.5, 0.3, 0.2, 1.0), glm::vec4(0.2), glm::vec4(0))));
+
+	//int quadDim = 2;
+	//quadsVec.push_back(Quad(glm::vec4(-quadDim, -1, -quadDim, 1), glm::vec4(quadDim, -1, -quadDim, 1), 
+	//	glm::vec4(-quadDim, -1, quadDim, 1), glm::vec4(quadDim, -1, quadDim, 1),
+	//	matteGrey));
 }
 
 /*
 * Create an SSBO for each respective member object type
 */
 void Scene::setupComputeShaderData() {
+
+	int sbWidth, sbHeight, sbChannels;
+	float* skyboxData = stbi_loadf("sunset_in_the_chalk_quarry_2k.hdr", &sbWidth, &sbHeight, &sbChannels, 0);
+	// Skybox
+	glGenTextures(1, &skyboxID);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, skyboxID);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, sbWidth, sbHeight, 0, GL_RGB, GL_FLOAT, skyboxData);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindImageTexture(1, skyboxID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+	stbi_image_free(skyboxData);
+
+
 
 	//
 	// UBO's
@@ -149,7 +190,7 @@ void Scene::setupComputeShaderData() {
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glUnmapBuffer(GL_UNIFORM_BUFFER);
 	blockIndexSUBO = glGetUniformBlockIndex(shaders->compShaderID, "pointLightData");
-	bindingIndexSUBO = 1;
+	bindingIndexSUBO = 5;
 	glBindBufferBase(GL_UNIFORM_BUFFER, bindingIndexSUBO, pointLightUBO);
 	glUniformBlockBinding(shaders->compShaderID, blockIndexSUBO, bindingIndexSUBO);
 
@@ -161,7 +202,7 @@ void Scene::setupComputeShaderData() {
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glUnmapBuffer(GL_UNIFORM_BUFFER);
 	blockIndexSUBO = glGetUniformBlockIndex(shaders->compShaderID, "sphereData");
-	bindingIndexSUBO = 2;
+	bindingIndexSUBO = 6;
 	glBindBufferBase(GL_UNIFORM_BUFFER, bindingIndexSUBO, sphereUBO);
 	glUniformBlockBinding(shaders->compShaderID, blockIndexSUBO, bindingIndexSUBO);
 
@@ -173,7 +214,7 @@ void Scene::setupComputeShaderData() {
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	glUnmapBuffer(GL_UNIFORM_BUFFER);
 	blockIndexSUBO = glGetUniformBlockIndex(shaders->compShaderID, "quadData");
-	bindingIndexSUBO = 3;
+	bindingIndexSUBO = 7;
 	glBindBufferBase(GL_UNIFORM_BUFFER, bindingIndexSUBO, quadUBO);
 	glUniformBlockBinding(shaders->compShaderID, blockIndexSUBO, bindingIndexSUBO);
 
