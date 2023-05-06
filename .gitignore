@@ -361,3 +361,7 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+/RayTracerOpenGL2.sln
+/RayTracerOpenGL2.vcxproj
+/RayTracerOpenGL2.vcxproj.filters
+/sunset_in_the_chalk_quarry_2k.hdr
