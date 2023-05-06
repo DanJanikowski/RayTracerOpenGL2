@@ -6,14 +6,14 @@
 Material::Material() {
 	data = glm::vec4(0);
 	diffuseColor = glm::vec4(0);
-	specularColor = glm::vec4(0);
+	glossColor = glm::vec4(0);
 	refractionColor = glm::vec4(0);
 	emissionColor = glm::vec4(0);
 }
-Material::Material(glm::vec4 data_, glm::vec4 diffuseColor_, glm::vec4 specularColor_, glm::vec4 refractionColor_, glm::vec4 emissionColor_) {
+Material::Material(glm::vec4 data_, glm::vec4 diffuseColor_, glm::vec4 glossColor_, glm::vec4 refractionColor_, glm::vec4 emissionColor_) {
 	data = data_;
 	diffuseColor = diffuseColor_;
-	specularColor = specularColor_;
+	glossColor = glossColor_;
 	refractionColor = refractionColor_;
 	emissionColor = emissionColor_;
 }

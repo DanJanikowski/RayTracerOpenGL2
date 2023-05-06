@@ -27,6 +27,7 @@ int main() {
 	glfwMakeContextCurrent(window); // contexts are weird, basically makes the window viewable
 
 	glfwSetWindowPos(window, 400, 50);
+	
 
 	// Basically load up OpenGL
 	gladLoadGL();

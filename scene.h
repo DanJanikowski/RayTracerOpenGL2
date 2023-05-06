@@ -22,14 +22,23 @@ public:
 	Scene(GLFWwindow* window_);
 	~Scene();
 
+	void keyInput(int key, int scancode, int action, int mods);
+
 	void draw();
 
 	GLFWwindow* window;
 	Camera* camera;
 	Shader* shaders;
 
-
 private:
+	static void keyInputSetup(GLFWwindow* window, int key, int scancode, int action, int mods) {
+		Scene* tempEnv = static_cast<Scene*>(glfwGetWindowUserPointer(window));
+		tempEnv->keyInput(key, scancode, action, mods);
+	}
+
+	int randmode = 0;
+	bool resetFrames = false;
+
 	void updateFPS();
 	void setupScreenQuad();
 	void setupSceneObjects();

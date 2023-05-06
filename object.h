@@ -20,8 +20,8 @@ struct Material {
 	~Material();
 
 	// Stores material data: 
-	// data.x - roughness = how distrubed the reflectance rays are/percentage chance to reflect/absorb
-	// data.y - shininess = blinn phong exponent
+	// data.x - smoothness = how distrubed the reflectance rays are/percentage chance to reflect/absorb
+	// data.y - glossiness
 	// data.z - index of refraction
 	// data.w - lightPower = if the material type is a light defines the lights power otherwise 0
 	// 
@@ -45,7 +45,7 @@ struct Material {
 	//TODO have to add refractive index for dielectrics
 
 	glm::vec4 diffuseColor;		// vec4(0) if the material type IS an emitter
-	glm::vec4 specularColor;	// vec4(0) if the material type IS an emitter
+	glm::vec4 glossColor;	// vec4(0) if the material type IS an emitter
 	glm::vec4 refractionColor;
 	glm::vec4 emissionColor;	// vec4(0) if the material type is NOT an emitter
 };
